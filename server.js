@@ -11,14 +11,30 @@ const app = express();
 app.use(cors());
 app.use(express.json()); 
 
+
+
+const path = require('path');
+
+app.use(express.static(path.join(__dirname, 'frontend/build')));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.resolve(__dirname, 'frontend', 'build', 'index.html'));
+});
+
+
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error(err));
 
+<<<<<<< HEAD
 app.get("/", (req, res) => {
 
   res.send("API is running");
 
+=======
+app.get('/', (req, res) => {
+  res.send('Server is running!');
+>>>>>>> ffd32151600462bd3420051ce4337488f79423ad
 });
 
 
