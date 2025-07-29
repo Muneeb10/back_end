@@ -9,7 +9,7 @@ const Subscriber = require('./models/Subscriber');
 const app = express();
 
 app.use(cors(
-  origin: 'https://front-end-ten-mu-71.vercel.app/', // exact domain
+  origin: `${process.env.COR_URL}`, // exact domain
   credentials: true,
 ));
 app.use(express.json()); 
