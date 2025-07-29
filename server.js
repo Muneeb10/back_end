@@ -8,10 +8,10 @@ const Subscriber = require('./models/Subscriber');
 
 const app = express();
 
-app.use(cors(
-  origin: `${process.env.COR_URL}`, // exact domain
+app.use(cors({
+  origin: process.env.COR_URL,
   credentials: true,
-));
+}));
 app.use(express.json()); 
 
 
