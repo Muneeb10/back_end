@@ -1,97 +1,101 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
-require('dotenv').config();
-
-const FormSubmission = require('./models/FormSubmission');
-const Subscriber = require('./models/Subscriber');
+const multer = require('multer');
+const nodemailer = require('nodemailer');
+const dotenv = require('dotenv');
+const path = require('path');
+dotenv.config();
 
 const app = express();
 
-app.use(cors());
-app.use(express.json()); 
+app.use(cors({
+  origin: 'http://localhost:5173/', // ✅ Replace this with your actual frontend domain
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type'],
+}));
 
+app.use(express.json());
 
-
-const path = require('path');
-
-app.use(express.static(path.join(__dirname, 'frontend/build')));
-
-app.get('*', (req, res) => {
-  res.sendFile(path.resolve(__dirname, 'frontend', 'build', 'index.html'));
-});
-
-
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.error(err));
+// Multer Setup (for handling multipart/form-data)
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 app.get('/', (req, res) => {
-  res.send('Server is running!');
+  res.send('Server is up and running!');
 });
 
-
-app.post('/api/form', async (req, res) => {
+app.post('/api/form', upload.fields([
+  { name: 'cnicFront' },
+  { name: 'cnicBack' },
+  { name: 'applicantPhoto' },
+  { name: 'screenshot' }
+]), async (req, res) => {
   try {
-    const { fullName, email, phone, service, subject, message } = req.body;
-
-    // Check if email already exists
-    const existingEmail = await FormSubmission.findOne({ email });
-    if (existingEmail) {
-      return res.status(400).json({ error: 'Email already exists. Please use a different email.' });
-    }
-
-    // Check if phone already exists
-    const existingPhone = await FormSubmission.findOne({ phone });
-    if (existingPhone) {
-      return res.status(400).json({ error: 'Phone number already exists. Please use a different phone number.' });
-    }
-
-    // Create new form document
-    const newForm = new FormSubmission({
-      fullName,
+    const {
+      firstName,
+      lastName,
+      jobTitle,
       email,
-      phone,
-      service,
-      subject,
-      message
+      whatsapp,
+      cnic,
+      address,
+      loanAmount
+    } = req.body;
+
+    const files = req.files;
+
+    // Email configuration
+    const transporter = nodemailer.createTransport({
+      service: 'gmail', // or your SMTP service
+      auth: {
+        user: process.env.EMAIL_USERNAME, // Your email address
+        pass: process.env.EMAIL_PASSWORD  // Your email app password
+      }
     });
 
-    await newForm.save();
-    res.status(201).json({ message: 'Form submitted successfully' });
+    const mailOptions = {
+      from: email, // use user's email as sender
+      to: process.env.RECEIVER_EMAIL, // stored in .env
+      subject: `New Loan Application from ${firstName} ${lastName}`,
+      text: `
+New Loan Application Received:
 
-  } catch (err) {
-    res.status(500).json({ error: err.message || 'Server Error' });
-  }
-});
+Name: ${firstName} ${lastName}
+Job Title: ${jobTitle}
+Email: ${email}
+WhatsApp: ${whatsapp}
+CNIC: ${cnic}
+Address: ${address}
+Loan Amount: ${loanAmount}
+      `,
+      attachments: [
+        {
+          filename: files.cnicFront?.[0]?.originalname,
+          content: files.cnicFront?.[0]?.buffer
+        },
+        {
+          filename: files.cnicBack?.[0]?.originalname,
+          content: files.cnicBack?.[0]?.buffer
+        },
+        {
+          filename: files.applicantPhoto?.[0]?.originalname,
+          content: files.applicantPhoto?.[0]?.buffer
+        },
+        {
+          filename: files.screenshot?.[0]?.originalname,
+          content: files.screenshot?.[0]?.buffer
+        }
+      ].filter(Boolean)
+    };
 
+    await transporter.sendMail(mailOptions);
+    res.status(200).json({ message: 'Form submitted and emailed successfully' });
 
-
-// POST route for newsletter subscription
-
-
-app.post('/subscribe', async (req, res) => {
-  const { email } = req.body;
-
-  if (!email) return res.status(400).json({ message: 'Email is required' });
-
-  try {
-    const existing = await Subscriber.findOne({ email });
-    if (existing) {
-      return res.status(400).json({ message: 'Already subscribed' });
-    }
-
-    const subscriber = new Subscriber({ email });
-    await subscriber.save();
-
-    res.status(201).json({ message: 'Successfully subscribed!' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error });
+    console.error('Email sending failed:', error);
+    res.status(500).json({ error: 'Failed to send email' });
   }
 });
 
-
-
-app.listen(process.env.PORT || 5000, () => {
-  console.log(`Server running on port ${process.env.PORT}`);
-});
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
