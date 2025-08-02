@@ -9,10 +9,18 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
+<<<<<<< HEAD
   origin: 'http://localhost:5173/', // ✅ Replace this with your actual frontend domain
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type'],
 }));
+=======
+  origin: process.env.COR_URL,
+   methods: ['GET', 'POST', 'OPTIONS'],
+  credentials: true,
+}));
+app.use(express.json()); 
+>>>>>>> 3e395e5448169bd4acc2f28288dbc43e05f6cc03
 
 app.use(express.json());
 
@@ -20,8 +28,20 @@ app.use(express.json());
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
+<<<<<<< HEAD
 app.get('/', (req, res) => {
   res.send('Server is up and running!');
+=======
+
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error(err));
+
+
+app.get('/', (req, res) => {
+  res.send('Server is running!');
+
+>>>>>>> 3e395e5448169bd4acc2f28288dbc43e05f6cc03
 });
 
 app.post('/api/form', upload.fields([
